@@ -27,6 +27,9 @@ class Toy_Dataset(Dataset):
         top_view_image, search_view_indexible, class_index = generate_final_data(
             class_id=class_id
         )
+        
+        # make sure top_view_image is a tensor
+        top_view_image = ToTensorV2()(image=top_view_image)["image"]
 
         return top_view_image, search_view_indexible, class_index
 
