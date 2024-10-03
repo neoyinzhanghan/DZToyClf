@@ -87,7 +87,7 @@ def main():
 
     # Trainer
     trainer = pl.Trainer(
-        max_epochs=50,
+        max_epochs=10,
         devices=2 if torch.cuda.is_available() else 0,  # Use 3 GPUs
         accelerator="gpu",  # Ensure that you're using the GPUs
         strategy="ddp",  # Use DistributedDataParallel strategy for multi-GPU
@@ -97,7 +97,6 @@ def main():
     )
 
     trainer.fit(model, datamodule=data_module)
-    trainer.test(model, datamodule=data_module)
 
 
 if __name__ == "__main__":
