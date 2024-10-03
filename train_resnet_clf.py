@@ -88,7 +88,7 @@ def main():
     # Trainer
     trainer = pl.Trainer(
         max_epochs=50,
-        devices=3 if torch.cuda.is_available() else 0,  # Use 3 GPUs
+        devices=2 if torch.cuda.is_available() else 0,  # Use 3 GPUs
         accelerator="gpu",  # Ensure that you're using the GPUs
         strategy="ddp",  # Use DistributedDataParallel strategy for multi-GPU
         num_sanity_val_steps=0,  # Skip sanity checks to speed up debugging
