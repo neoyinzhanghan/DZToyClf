@@ -4,7 +4,6 @@ import torch
 import pytorch_lightning as pl
 from torchvision import transforms
 from search_view_indexible import generate_final_data
-from albumentations.pytorch import ToTensorV2
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -29,7 +28,7 @@ class Toy_Dataset(Dataset):
         )
         
         # make sure top_view_image is a tensor
-        top_view_image = ToTensorV2()(image=top_view_image)["image"]
+        top_view_image = transforms.ToTensor()(top_view_image)
 
         return top_view_image, search_view_indexible, class_index
 
