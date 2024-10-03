@@ -1,94 +1,104 @@
 import torch
-import torch.nn.functional as F
-from torchmetrics import Accuracy, F1, AUROC
-from pytorch_lightning import Trainer, LightningModule
-from pytorch_lightning.callbacks import LearningRateMonitor
-from torchvision.models import resnext50_32x4d
+import torch.nn as nn
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from datamodule import NDPI_DataModule
+from torchmetrics import Accuracy, F1Score, AUROC
+import pytorch_lightning as pl
+from torchvision.models import resnext50_32x4d
+from torch.utils.data import DataLoader
+from dataset import NDPI_DataModule  # Assuming you saved the DataModule from the previous code
 
-class ResNeXtClassifier(LightningModule):
-    def __init__(self, num_classes=2, learning_rate=1e-3):
-        super().__init__()
-        # Initialize the ResNeXt model
+class ResNeXtLightningModule(pl.LightningModule):
+    def __init__(self, num_classes=2, lr=1e-4, T_max=10):
+        super(ResNeXtLightningModule, self).__init__()
+        self.save_hyperparameters()
+
+        # Initialize ResNeXt-50
         self.model = resnext50_32x4d(pretrained=True)
-        # Modify the final layer to output the correct number of classes
-        self.model.fc = torch.nn.Linear(self.model.fc.in_features, num_classes)
-        
-        self.learning_rate = learning_rate
-        # Metrics
-        self.accuracy = Accuracy()
-        self.f1 = F1(num_classes=num_classes, average="macro")
-        self.auroc = AUROC(num_classes=num_classes)
+        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
+        self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, x):
-        return self.model(x)
+        # Metrics
+        self.accuracy = Accuracy(num_classes=num_classes, task="multiclass")
+        self.f1_score = F1Score(num_classes=num_classes, task="multiclass")
+        self.auroc = AUROC(num_classes=num_classes, task="multiclass")
+
+    def forward(self, topview_image_tensor):
+        return self.model(topview_image_tensor)
 
     def training_step(self, batch, batch_idx):
-        top_view_images, _, class_indices = batch
-        logits = self(top_view_images)
-        loss = F.cross_entropy(logits, class_indices)
+        topview_image, _, class_index = batch
+        outputs = self(topview_image)
+        loss = self.loss_fn(outputs, class_index)
 
-        preds = torch.argmax(logits, dim=1)
-        # Log metrics
-        self.log('train_loss', loss, on_step=True, on_epoch=True)
-        self.log('train_acc', self.accuracy(preds, class_indices), on_step=True, on_epoch=True)
-        self.log('train_f1', self.f1(preds, class_indices), on_step=True, on_epoch=True)
-        self.log('train_auroc', self.auroc(logits, class_indices), on_step=True, on_epoch=True)
+        # Metrics computation
+        acc = self.accuracy(outputs, class_index)
+        auroc_score = self.auroc(outputs, class_index)
+        f1 = self.f1_score(outputs, class_index)
+
+        # Logging
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train_acc", acc, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train_auroc", auroc_score, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train_f1", f1, on_step=True, on_epoch=True, prog_bar=True)
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        top_view_images, _, class_indices = batch
-        logits = self(top_view_images)
-        loss = F.cross_entropy(logits, class_indices)
+        topview_image, _, class_index = batch
+        outputs = self(topview_image)
+        loss = self.loss_fn(outputs, class_index)
 
-        preds = torch.argmax(logits, dim=1)
-        # Log metrics
-        self.log('val_loss', loss, on_step=False, on_epoch=True)
-        self.log('val_acc', self.accuracy(preds, class_indices), on_step=False, on_epoch=True)
-        self.log('val_f1', self.f1(preds, class_indices), on_step=False, on_epoch=True)
-        self.log('val_auroc', self.auroc(logits, class_indices), on_step=False, on_epoch=True)
+        # Metrics computation
+        acc = self.accuracy(outputs, class_index)
+        auroc_score = self.auroc(outputs, class_index)
+        f1 = self.f1_score(outputs, class_index)
 
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        top_view_images, _, class_indices = batch
-        logits = self(top_view_images)
-        loss = F.cross_entropy(logits, class_indices)
-
-        preds = torch.argmax(logits, dim=1)
-        # Log metrics
-        self.log('test_loss', loss, on_step=False, on_epoch=True)
-        self.log('test_acc', self.accuracy(preds, class_indices), on_step=False, on_epoch=True)
-        self.log('test_f1', self.f1(preds, class_indices), on_step=False, on_epoch=True)
-        self.log('test_auroc', self.auroc(logits, class_indices), on_step=False, on_epoch=True)
-
-        return loss
+        # Logging
+        self.log("val_loss", loss, on_epoch=True, prog_bar=True)
+        self.log("val_acc", acc, on_epoch=True, prog_bar=True)
+        self.log("val_auroc", auroc_score, on_epoch=True, prog_bar=True)
+        self.log("val_f1", f1, on_epoch=True, prog_bar=True)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        scheduler = CosineAnnealingLR(optimizer, T_max=10)
+        optimizer = AdamW(self.parameters(), lr=self.hparams.lr)
+        scheduler = CosineAnnealingLR(optimizer, T_max=self.hparams.T_max)
         return [optimizer], [scheduler]
 
-# Load your data
-data_module = NDPI_DataModule(metadata_file='path_to_metadata.csv', batch_size=32, num_workers=32)
 
-# Set up trainer
-trainer = Trainer(
-    max_epochs=20,
-    gpus=3,  # Use 3 GPUs
-    accelerator="gpu",  # Enable GPU usage
-    strategy="ddp",  # Use DistributedDataParallel for multi-GPU training
-    callbacks=[LearningRateMonitor(logging_interval='step')],
-    precision=16  # Use mixed precision for faster training
-)
+class SpecimenDataModule(NDPI_DataModule):
+    def __init__(self, metadata_file, batch_size=1, num_workers=32):
+        super(SpecimenDataModule, self).__init__(metadata_file, batch_size, num_workers)
 
-# Initialize your model
-model = ResNeXtClassifier(num_classes=2)
+    def setup(self, stage=None):
+        super().setup(stage=stage)
 
-# Train the model
-trainer.fit(model, datamodule=data_module)
 
-# Test the model
-trainer.test(model, datamodule=data_module)
+def main():
+    metadata_file = "/home/greg/Documents/neo/wsi_specimen_clf_metadata.csv"
+    batch_size = 8
+    num_classes = 2  # Number of classes in your dataset
+
+    # Data Module
+    data_module = SpecimenDataModule(metadata_file, batch_size)
+
+    # Model
+    model = ResNeXtLightningModule(num_classes)
+
+    # Trainer
+    trainer = pl.Trainer(
+        max_epochs=50,
+        devices=3 if torch.cuda.is_available() else 0,  # Use 3 GPUs
+        accelerator="gpu",  # Ensure that you're using the GPUs
+        strategy="ddp",  # Use DistributedDataParallel strategy for multi-GPU
+        num_sanity_val_steps=0,  # Skip sanity checks to speed up debugging
+        log_every_n_steps=2,
+        precision=16  # Use mixed precision for faster training
+    )
+
+    trainer.fit(model, datamodule=data_module)
+    trainer.test(model, datamodule=data_module)
+
+
+if __name__ == "__main__":
+    main()
