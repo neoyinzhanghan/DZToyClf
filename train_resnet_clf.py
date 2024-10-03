@@ -6,7 +6,7 @@ from torchmetrics import Accuracy, F1Score, AUROC
 import pytorch_lightning as pl
 from torchvision.models import resnext50_32x4d
 from torch.utils.data import DataLoader
-from dataset import NDPI_DataModule  # Assuming you saved the DataModule from the previous code
+from datamodule import NDPI_DataModule  # Assuming you saved the DataModule from the previous code
 
 class ResNeXtLightningModule(pl.LightningModule):
     def __init__(self, num_classes=2, lr=1e-4, T_max=10):
