@@ -33,10 +33,10 @@ def compute_numerical_gradient(
 
         # flatten the cloned parameters
         params_flat_plus = np.concatenate(
-            [param.flatten().cpu().numpy() for param in params_clone_plus]
+            [param.flatten().cpu().detach().numpy() for param in params_clone_plus]
         )
         params_flat_minus = np.concatenate(
-            [param.flatten().cpu().numpy() for param in params_clone_minus]
+            [param.flatten().cpu().detach().numpy() for param in params_clone_minus]
         )
 
         # perturb the selected parameter
