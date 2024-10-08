@@ -1,12 +1,15 @@
 import numpy as np
 from PIL import Image
 
-def create_rectangle(rectangle_size, class_id):
+def create_rectangle(rectangle_size, class_id, downsample_rate=16):
     img = np.zeros((rectangle_size, rectangle_size, 3), np.uint8)  # Create a small rectangle
+
+    img_small = np.zeros((rectangle_size//downsample_rate, rectangle_size//downsample_rate, 3), np.uint8)  # Create a small rectangle
     
     # Random color for the rectangle
     color = np.random.randint(0, 255, 3)
     img[:, :] = color
+    img_small[:, :] = color
     
     if class_id == 0:
         # Add a small plus sign in the middle of the rectangle
@@ -27,7 +30,7 @@ def create_rectangle(rectangle_size, class_id):
     else:
         raise ValueError("Invalid class_id")
     
-    return img
+    return img, img_small
 
 def generate_data(class_id):
 
@@ -39,68 +42,34 @@ def generate_data(class_id):
 
 
     img = np.zeros((height, width, 3), np.uint8)
+    img_small = np.zeros((height // downsample_rate, width // downsample_rate, 3), np.uint8)
 
-    rectangle = create_rectangle(rectangle_size, class_id) 
+    rectangle, rectangle_small = create_rectangle(rectangle_size, class_id) 
 
     x = np.random.randint(0, width - rectangle_size)
     y = np.random.randint(0, height - rectangle_size)
 
+    x_downsampled = x // downsample_rate
+    y_downsampled = y // downsample_rate
+
     img[y : y + rectangle_size, x : x + rectangle_size] = rectangle
+    img_small[y_downsampled : y_downsampled + rectangle_size // downsample_rate, x_downsampled : x_downsampled + rectangle_size // downsample_rate] = rectangle_small
 
     img = Image.fromarray(img)
+    img_small = Image.fromarray(img_small)
 
-    downsampled_img = img.resize((width // downsample_rate, height // downsample_rate))
-
-    return img, downsampled_img, class_id
+    return img, img_small, class_id
 
 if __name__ == "__main__":
 
-    # Parameters
-    rectangle_size = 224
-    downsample_rate = 16
-    width = 224 * 16
-    height = 224 * 16
+    img, img_small, class_id = generate_data(0)
+    # save the images at rectangle_0.jpg and rectangle_0_downsampled.jpg
 
-    # Create a blank image of size width x height
-    img0 = np.zeros((height, width, 3), np.uint8)
+    img.save("rectangle_0.jpg")
+    img_small.save("rectangle_0_downsampled.jpg")
 
-    # Generate a rectangle with class_id = 0 or 1
-    rectangle = create_rectangle(rectangle_size, class_id=0) 
+    img, img_small, class_id = generate_data(1)
+    # save the images at rectangle_1.jpg and rectangle_1_downsampled.jpg
 
-    # Randomly place the rectangle in the large image
-    x = np.random.randint(0, width - rectangle_size)
-    y = np.random.randint(0, height - rectangle_size)
-
-    # Place the rectangle in the main image
-    img0[y : y + rectangle_size, x : x + rectangle_size] = rectangle
-
-    # Save the image
-    img0 = Image.fromarray(img0)
-    img0.save("rectangle_0.jpg")
-
-    # now try class_id=1
-
-    # Create a blank image of size width x height
-    img1 = np.zeros((height, width, 3), np.uint8)
-
-    # Generate a rectangle with class_id = 0 or 1
-    rectangle = create_rectangle(rectangle_size, class_id=1) 
-
-    # Randomly place the rectangle in the large image
-    x = np.random.randint(0, width - rectangle_size)
-    y = np.random.randint(0, height - rectangle_size)
-
-    # Place the rectangle in the main image
-    img1[y : y + rectangle_size, x : x + rectangle_size] = rectangle
-
-    # Save the image
-    img1 = Image.fromarray(img1)
-    img1.save("rectangle_1.jpg")
-
-    # now downsample img0 and img1 by a factor of 16 and save them as well
-    img0_downsampled = img0.resize((width // downsample_rate, height // downsample_rate))
-    img0_downsampled.save("rectangle_0_downsampled.jpg")
-
-    img1_downsampled = img1.resize((width // downsample_rate, height // downsample_rate))
-    img1_downsampled.save("rectangle_1_downsampled.jpg")
-
+    img.save("rectangle_1.jpg")
+    img_small.save("rectangle_1_downsampled.jpg")
