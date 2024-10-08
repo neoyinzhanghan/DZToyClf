@@ -2,8 +2,8 @@ import os
 from PIL import Image
 from tqdm import tqdm
 
-png_dir = "/media/hdd3/neo/not_enough_focus_regions_topviews/BMA_grid_rep"
-save_dir = "/media/hdd3/neo/not_enough_focus_regions_topviews_jpg/BMA_grid_rep"
+png_dir = "/media/hdd3/neo/not_enough_focus_regions_topviews/BMA_heat_map"
+save_dir = "/media/hdd3/neo/not_enough_focus_regions_topviews_jpg/BMA_heat_map"
 
 os.makedirs(save_dir, exist_ok=True)
 # get the paths to all the png files in the directory
