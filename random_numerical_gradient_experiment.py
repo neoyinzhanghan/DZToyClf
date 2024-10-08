@@ -5,7 +5,6 @@ import torch.nn as nn
 from tqdm import tqdm
 from torchvision.models import resnext50_32x4d
 from param_flat import flatten_parameters, unflatten_parameters
-from scipy.optimize import approx_fprime
 
 
 def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=1e-5, n_params=None):
@@ -54,23 +53,6 @@ def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=
     return numerical_gradients, param_indices
 
 
-def compute_approx_fprime_gradient(model, input_data, target_data, loss_fn, epsilon=1e-5):
-    """Compute numerical gradient using scipy's approx_fprime."""
-    params = list(model.parameters())
-    param_shapes = [param.shape for param in params]
-    flat_params = flatten_parameters(params).detach().cpu().numpy()
-
-    def loss_wrapper(flat_params):
-        """Wrapper function that sets the model parameters and returns the loss."""
-        set_model_params(model, torch.tensor(flat_params, dtype=torch.float32), param_shapes)
-        output = model(input_data)
-        return loss_fn(output, target_data).item()
-
-    # Compute gradients using approx_fprime
-    grad_approximations = approx_fprime(flat_params, loss_wrapper, epsilon)
-    return grad_approximations
-
-
 def set_model_params(model, flat_params, param_shapes):
     """Set the model parameters using a flattened parameter tensor."""
     unflattened_params = unflatten_parameters(flat_params, param_shapes)
@@ -89,11 +71,10 @@ def compute_backward_gradient(model, input_data, target_data, loss_fn):
 
 
 def compare_gradients(
-    numerical_gradients, approx_fprime_gradients, backward_gradients, param_indices, csv_filename="grad_comparison.csv"
+    numerical_gradients, backward_gradients, param_indices, csv_filename="grad_comparison.csv"
 ):
     device = "cpu"
     numerical_gradients = [grad for grad in numerical_gradients]
-    approx_fprime_gradients = [grad for grad in approx_fprime_gradients]
     backward_gradients = [grad.to(device) for grad in backward_gradients]
 
     # Flatten all gradients for comparison
@@ -102,21 +83,15 @@ def compare_gradients(
     # Compare only the selected parameter gradients
     with open(csv_filename, mode="w", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["Parameter Index", "Numerical Gradient", "Approx Fprime Gradient", "Backward Gradient", "Relative Error (Numerical)", "Relative Error (Approx Fprime)"])
+        writer.writerow(["Parameter Index", "Numerical Gradient", "Backward Gradient", "Relative Error"])
 
         for i, idx in enumerate(param_indices):
             num_grad = numerical_gradients[i]
-            approx_fprime_grad = approx_fprime_gradients[idx]
             back_grad = backward_grad_flat[idx]
-
-            rel_error_numerical = np.linalg.norm(back_grad - num_grad) / (
+            relative_error = np.linalg.norm(back_grad - num_grad) / (
                 np.linalg.norm(back_grad) + np.linalg.norm(num_grad) + 1e-8
             )
-            rel_error_approx = np.linalg.norm(back_grad - approx_fprime_grad) / (
-                np.linalg.norm(back_grad) + np.linalg.norm(approx_fprime_grad) + 1e-8
-            )
-
-            writer.writerow([idx, num_grad, approx_fprime_grad, back_grad, rel_error_numerical, rel_error_approx])
+            writer.writerow([idx, num_grad, back_grad, relative_error])
 
     print(f"Gradient comparison saved to {csv_filename}")
 
@@ -149,13 +124,8 @@ if __name__ == "__main__":
         model, input_data, target_data, loss_fn, n_params=N_params
     )
 
-    print("Computing approx fprime gradient...")
-    approx_fprime_gradients = compute_approx_fprime_gradient(
-        model, input_data, target_data, loss_fn, epsilon=1e-5
-    )
-
     print("Computing backward gradient...")
     backward_gradients = compute_backward_gradient(model, input_data, target_data, loss_fn)
 
     print("Comparing gradients...")
-    compare_gradients(numerical_gradients, approx_fprime_gradients, backward_gradients, param_indices)
+    compare_gradients(numerical_gradients, backward_gradients, param_indices)
