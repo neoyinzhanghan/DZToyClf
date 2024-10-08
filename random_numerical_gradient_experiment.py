@@ -98,7 +98,7 @@ def compare_gradients(
     numerical_gradients, backward_gradients, param_indices, csv_filename="grad_comparison.csv"
 ):
     device = "cpu"
-    numerical_gradients = [grad.to(device) for grad in numerical_gradients]
+    numerical_gradients = [grad for grad in numerical_gradients]
     backward_gradients = [grad.to(device) for grad in backward_gradients]
 
     # Flatten all gradients for comparison
