@@ -1,21 +1,16 @@
 import torch
 import numpy as np
-import random
 import csv
 import torch.nn as nn
 from torchvision.models import resnext50_32x4d
 
 
-def compute_numerical_gradient(
-    model, input_data, target_data, loss_fn, epsilon=1e-5, n_params=None
-):
+def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=1e-5, n_params=None):
     # Store numerical gradients for all parameters
     numerical_gradients = []
 
     # Get model parameters
     params = list(model.parameters())
-
-    # Flatten all parameters into a 1D array and count total parameters
     total_params = sum(param.numel() for param in params)
 
     # Randomly select a subset of parameter indices for gradient computation
@@ -24,65 +19,44 @@ def compute_numerical_gradient(
     else:
         param_indices = np.arange(total_params)
 
-    grads = []
+    # Flatten all parameters into a single array
+    param_list = torch.cat([param.flatten() for param in params])
+    
+    # Compute the numerical gradients using epsilon perturbations
+    for idx in param_indices:
+        # Save the original parameter value
+        original_value = param_list[idx].item()
 
-    for param_index in param_indices:
-        # clone the model parameters
-        params_clone_plus = [param.clone() for param in params]
-        params_clone_minus = [param.clone() for param in params]
-
-        # flatten the cloned parameters
-        params_flat_plus = np.concatenate(
-            [param.flatten().cpu().detach().numpy() for param in params_clone_plus]
-        )
-        params_flat_minus = np.concatenate(
-            [param.flatten().cpu().detach().numpy() for param in params_clone_minus]
-        )
-
-        # perturb the selected parameter
-        params_flat_plus[param_index] += epsilon
-        params_flat_minus[param_index] -= epsilon
-
-        # unflatten the parameters
-        start_idx = 0
-        for param, param_clone_plus, param_clone_minus in zip(
-            params, params_clone_plus, params_clone_minus
-        ):
-            numel = param.numel()
-            param_clone_plus.data = torch.tensor(
-                params_flat_plus[start_idx : start_idx + numel].reshape(param.shape)
-            )
-            param_clone_minus.data = torch.tensor(
-                params_flat_minus[start_idx : start_idx + numel].reshape(param.shape)
-            )
-            start_idx += numel
-
-        # Perform forward pass to compute the output and loss
-        with torch.no_grad():
-            for original_param, clone_param in zip(
-                model.parameters(), params_clone_plus
-            ):
-                original_param.copy_(clone_param)
+        # Perturb parameter positively and compute the loss
+        param_list[idx] = original_value + epsilon
+        set_model_params(model, param_list)
         output_plus = model(input_data)
+        loss_plus = loss_fn(output_plus, target_data).item()
 
-        with torch.no_grad():
-            for original_param, clone_param in zip(
-                model.parameters(), params_clone_minus
-            ):
-                original_param.copy_(clone_param)
+        # Perturb parameter negatively and compute the loss
+        param_list[idx] = original_value - epsilon
+        set_model_params(model, param_list)
         output_minus = model(input_data)
+        loss_minus = loss_fn(output_minus, target_data).item()
 
-        with torch.no_grad():
-            for original_param, saved_param in zip(model.parameters(), params):
-                original_param.copy_(saved_param)
-        loss_plus = loss_fn(output_plus, target_data)
-        loss_minus = loss_fn(output_minus, target_data)
+        # Restore the original parameter value
+        param_list[idx] = original_value
+        set_model_params(model, param_list)
 
-        # Compute numerical gradient
-        grad_approx = (loss_plus.item() - loss_minus.item()) / (2 * epsilon)
-        grads.append(grad_approx)
+        # Compute the numerical gradient
+        grad_approx = (loss_plus - loss_minus) / (2 * epsilon)
+        numerical_gradients.append(grad_approx)
 
-    return grads, param_indices
+    return numerical_gradients, param_indices
+
+
+def set_model_params(model, param_list):
+    """Set the model parameters using a flattened parameter list."""
+    start_idx = 0
+    for param in model.parameters():
+        numel = param.numel()
+        param.data.copy_(param_list[start_idx:start_idx + numel].view(param.shape))
+        start_idx += numel
 
 
 def compute_backward_gradient(model, input_data, target_data, loss_fn):
@@ -102,10 +76,7 @@ def compare_gradients(
     backward_gradients = [grad.to(device) for grad in backward_gradients]
 
     # Flatten all gradients for comparison
-    numerical_grad_flat = np.array(numerical_gradients)
-    backward_grad_flat = np.concatenate(
-        [grad.flatten().cpu().numpy() for grad in backward_gradients]
-    )
+    backward_grad_flat = torch.cat([grad.flatten() for grad in backward_gradients]).cpu().numpy()
 
     # Compare only the selected parameter gradients
     with open(csv_filename, mode="w", newline="") as file:
@@ -113,7 +84,7 @@ def compare_gradients(
         writer.writerow(["Parameter Index", "Numerical Gradient", "Backward Gradient", "Relative Error"])
 
         for i, idx in enumerate(param_indices):
-            num_grad = numerical_grad_flat[i]
+            num_grad = numerical_gradients[i]
             back_grad = backward_grad_flat[idx]
             relative_error = np.linalg.norm(back_grad - num_grad) / (
                 np.linalg.norm(back_grad) + np.linalg.norm(num_grad) + 1e-8
