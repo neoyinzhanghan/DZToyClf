@@ -4,6 +4,7 @@ import csv
 import torch.nn as nn
 from tqdm import tqdm
 from torchvision.models import resnext50_32x4d
+from scipy.optimize import approx_fprime
 from param_flat import flatten_parameters, unflatten_parameters
 
 
@@ -24,31 +25,22 @@ def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=
 
     # Flatten all parameters into a single tensor
     param_list = flatten_parameters(params)
-    
-    # Compute the numerical gradients using epsilon perturbations
-    for idx in tqdm(param_indices, desc="Computing numerical gradients"):
-        # Save the original parameter value
-        original_value = param_list[idx].item()
 
-        # Perturb parameter positively and compute the loss
-        param_list[idx] = original_value + epsilon
-        set_model_params(model, param_list, param_shapes)
-        output_plus = model(input_data)
-        loss_plus = loss_fn(output_plus, target_data).item()
+    # Define a function that takes flattened parameters and returns the loss
+    def loss_func(flat_params):
+        # Set the model parameters
+        set_model_params(model, torch.tensor(flat_params, dtype=torch.float32), param_shapes)
+        # Compute the output and loss
+        output = model(input_data)
+        return loss_fn(output, target_data).item()
 
-        # Perturb parameter negatively and compute the loss
-        param_list[idx] = original_value - epsilon
-        set_model_params(model, param_list, param_shapes)
-        output_minus = model(input_data)
-        loss_minus = loss_fn(output_minus, target_data).item()
+    # Compute the numerical gradients using approx_fprime
+    grad_approx = approx_fprime(
+        param_list.detach().numpy(), loss_func, epsilon
+    )
 
-        # Restore the original parameter value
-        param_list[idx] = original_value
-        set_model_params(model, param_list, param_shapes)
-
-        # Compute the numerical gradient
-        grad_approx = (loss_plus - loss_minus) / (2 * epsilon)
-        numerical_gradients.append(grad_approx)
+    # Extract only the selected gradients
+    numerical_gradients = [grad_approx[idx] for idx in param_indices]
 
     return numerical_gradients, param_indices
 
@@ -71,7 +63,7 @@ def compute_backward_gradient(model, input_data, target_data, loss_fn):
 
 
 def compare_gradients(
-    numerical_gradients, backward_gradients, param_indices, csv_filename="grad_comparison.csv"
+    numerical_gradients, backward_gradients, param_indices, csv_filename="approx_fprime_grad_comparison.csv"
 ):
     device = "cpu"
     numerical_gradients = [grad for grad in numerical_gradients]
