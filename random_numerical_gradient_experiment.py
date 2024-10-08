@@ -78,7 +78,7 @@ def compare_gradients(
     backward_gradients = [grad.to(device) for grad in backward_gradients]
 
     # Flatten all gradients for comparison
-    backward_grad_flat = torch.cat([grad.flatten() for grad in backward_gradients]).cpu().numpy()
+    backward_grad_flat = flatten_parameters(backward_gradients).cpu().numpy()
 
     # Compare only the selected parameter gradients
     with open(csv_filename, mode="w", newline="") as file:
