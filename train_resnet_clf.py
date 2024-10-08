@@ -4,6 +4,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torchmetrics import Accuracy, F1Score, AUROC
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
 from torchvision.models import resnext50_32x4d
 from torch.utils.data import DataLoader
 from datamodule import NDPI_DataModule  # Assuming you saved the DataModule from the previous code
@@ -37,10 +38,10 @@ class ResNeXtLightningModule(pl.LightningModule):
         f1 = self.f1_score(outputs, class_index)
 
         # Logging
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log("train_acc", acc, on_step=True, on_epoch=True, prog_bar=True)
-        self.log("train_auroc", auroc_score, on_step=True, on_epoch=True, prog_bar=True)
-        self.log("train_f1", f1, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/accuracy", acc, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/auroc", auroc_score, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/f1_score", f1, on_step=True, on_epoch=True, prog_bar=True)
 
         return loss
 
@@ -55,10 +56,10 @@ class ResNeXtLightningModule(pl.LightningModule):
         f1 = self.f1_score(outputs, class_index)
 
         # Logging
-        self.log("val_loss", loss, on_epoch=True, prog_bar=True)
-        self.log("val_acc", acc, on_epoch=True, prog_bar=True)
-        self.log("val_auroc", auroc_score, on_epoch=True, prog_bar=True)
-        self.log("val_f1", f1, on_epoch=True, prog_bar=True)
+        self.log("val/loss", loss, on_epoch=True, prog_bar=True)
+        self.log("val/accuracy", acc, on_epoch=True, prog_bar=True)
+        self.log("val/auroc", auroc_score, on_epoch=True, prog_bar=True)
+        self.log("val/f1_score", f1, on_epoch=True, prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = AdamW(self.parameters(), lr=self.hparams.lr)
@@ -85,15 +86,19 @@ def main():
     # Model
     model = ResNeXtLightningModule(num_classes)
 
+    # Logger for TensorBoard
+    logger = TensorBoardLogger("tb_logs", name="resnext")
+
     # Trainer
     trainer = pl.Trainer(
         max_epochs=10,
-        devices=2 if torch.cuda.is_available() else 0,  # Use 3 GPUs
+        devices=2 if torch.cuda.is_available() else 0,  # Use 2 GPUs
         accelerator="gpu",  # Ensure that you're using the GPUs
         strategy="ddp",  # Use DistributedDataParallel strategy for multi-GPU
         num_sanity_val_steps=0,  # Skip sanity checks to speed up debugging
         log_every_n_steps=2,
-        precision=16  # Use mixed precision for faster training
+        precision=16,  # Use mixed precision for faster training
+        logger=logger  # Add the logger here
     )
 
     trainer.fit(model, datamodule=data_module)
