@@ -16,3 +16,5 @@ for png_file in tqdm(png_files, desc="Converting PNG to JPG"):
     
     # Save the image as a JPG file
     jpg_path = os.path.join(save_dir, os.path.basename(png_file).replace(".png", ".jpg"))
+
+    img.save(jpg_path, "JPEG")
