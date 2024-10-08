@@ -65,11 +65,11 @@ if __name__ == "__main__":
     img, img_small, class_id = generate_data(0)
     # save the images at rectangle_0.jpg and rectangle_0_downsampled.jpg
 
-    img.save("rectangle_0.jpg")
-    img_small.save("rectangle_0_downsampled.jpg")
+    img.save("rectangle_0.png")
+    img_small.save("rectangle_0_downsampled.png")
 
     img, img_small, class_id = generate_data(1)
     # save the images at rectangle_1.jpg and rectangle_1_downsampled.jpg
 
-    img.save("rectangle_1.jpg")
-    img_small.save("rectangle_1_downsampled.jpg")
+    img.save("rectangle_1.png")
+    img_small.save("rectangle_1_downsampled.png")
