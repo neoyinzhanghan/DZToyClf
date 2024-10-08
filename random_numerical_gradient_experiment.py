@@ -85,8 +85,9 @@ def compare_gradients(
         writer = csv.writer(file)
         writer.writerow(["Parameter Index", "Numerical Gradient", "Backward Gradient", "Relative Error"])
 
-        for i, idx in enumerate(param_indices):
+        for i in range(len(param_indices)):
             num_grad = numerical_gradients[i]
+            idx = param_indices[i]
             back_grad = backward_grad_flat[idx]
             relative_error = np.linalg.norm(back_grad - num_grad) / (
                 np.linalg.norm(back_grad) + np.linalg.norm(num_grad) + 1e-8
