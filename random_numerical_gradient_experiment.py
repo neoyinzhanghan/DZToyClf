@@ -7,7 +7,7 @@ from torchvision.models import resnext50_32x4d
 from param_flat import flatten_parameters, unflatten_parameters
 
 
-def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=1e-6, n_params=None):
+def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=1e-5, n_params=None):
     # Store numerical gradients for all parameters
     numerical_gradients = []
 
