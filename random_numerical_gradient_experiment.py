@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import csv
 import torch.nn as nn
+from tqdm import tqdm
 from torchvision.models import resnext50_32x4d
 
 
@@ -23,7 +24,7 @@ def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=
     param_list = torch.cat([param.flatten() for param in params])
     
     # Compute the numerical gradients using epsilon perturbations
-    for idx in param_indices:
+    for idx in tqdm(param_indices, desc="Computing numerical gradients"):
         # Save the original parameter value
         original_value = param_list[idx].item()
 
