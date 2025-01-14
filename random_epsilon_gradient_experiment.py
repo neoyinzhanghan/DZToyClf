@@ -22,7 +22,7 @@ def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=
     if n_params:
         # add 0:10 to the indices
         param_indices = np.random.choice(total_params, size=n_params, replace=False)
-        param_indices = np.concatenate([np.arange(10), param_indices])
+        param_indices = np.concatenate([np.arange(100), param_indices])
     else:
         param_indices = np.arange(total_params)
 
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     target_data = target_data.to("cpu")
 
     # Compute numerical gradients for a subset of parameters
-    N_params = 100  # Number of randomly selected parameters for numerical gradient calculation
+    N_params = 50  # Number of randomly selected parameters for numerical gradient calculation
     numerical_gradients, param_indices = compute_numerical_gradient(
         model, input_data, target_data, loss_fn, n_params=N_params
     )
