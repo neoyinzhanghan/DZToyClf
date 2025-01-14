@@ -393,7 +393,7 @@ class DZSpecimenClf_SamplingGradientTester(nn.Module):
         num_classes (int, optional): Number of output classes. Defaults to 2.
     """
     def __init__(self, N, patch_size=224, num_classes=2, x_max=224 * 16, y_max=224 * 16):
-        super(DZSpecimenClf, self).__init__()
+        super(DZSpecimenClf_SamplingGradientTester, self).__init__()
         # randomly initialize a tensor of shape (N, 2) that is real numbers between 112 and x_max and y_max
         self.x_max = x_max
         self.y_max = y_max
