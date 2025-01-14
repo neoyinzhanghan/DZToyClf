@@ -104,7 +104,7 @@ if __name__ == "__main__":
     input_slide_path = "/media/hdd2/neo/tmp_slides_dir/H23-5091;S11;MSK5 - 2023-06-12 12.32.44.ndpi"
     input_data = [SearchViewIndexible(input_slide_path, search_view_level=3, search_to_top_downsample_factor=16)]
     # Using a ResNeXt-50 model from torchvision
-    model = DZSpecimenClf_SamplingGradientTester(N=100, patch_size=224, num_classes=2, x_max=input_data[0].search_view_height, y_max=input_data[0].search_view_width)
+    model = DZSpecimenClf_SamplingGradientTester(N=8, patch_size=224, num_classes=2, x_max=input_data[0].search_view_height, y_max=input_data[0].search_view_width)
     loss_fn = nn.CrossEntropyLoss()
 
     # Generate random input and target data
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     target_data = target_data.to("cpu")
 
     # Compute numerical gradients for a subset of parameters
-    N_params = 10  # Number of randomly selected parameters for numerical gradient calculation
+    N_params = 100  # Number of randomly selected parameters for numerical gradient calculation
     numerical_gradients, param_indices = compute_numerical_gradient(
         model, input_data, target_data, loss_fn, n_params=N_params
     )
