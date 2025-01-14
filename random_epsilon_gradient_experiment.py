@@ -20,7 +20,9 @@ def compute_numerical_gradient(model, input_data, target_data, loss_fn, epsilon=
 
     # Randomly select a subset of parameter indices for gradient computation
     if n_params:
+        # add 0:10 to the indices
         param_indices = np.random.choice(total_params, size=n_params, replace=False)
+        param_indices = np.concatenate([np.arange(10), param_indices])
     else:
         param_indices = np.arange(total_params)
 
