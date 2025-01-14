@@ -104,7 +104,7 @@ if __name__ == "__main__":
     input_slide_path = "/media/hdd2/neo/tmp_slides_dir/H23-5091;S11;MSK5 - 2023-06-12 12.32.44.ndpi"
     input_data = [SearchViewIndexible(input_slide_path, search_view_level=3, search_to_top_downsample_factor=16)]
     # Using a ResNeXt-50 model from torchvision
-    model = DZSpecimenClf_SamplingGradientTester(N=10, patch_size=224, num_classes=2, x_max=input_data[0].search_view_width, y_max=input_data[0].search_view_height)
+    model = DZSpecimenClf_SamplingGradientTester(N=10, patch_size=224, num_classes=2, x_max=input_data[0].search_view_height, y_max=input_data[0].search_view_width)
     loss_fn = nn.CrossEntropyLoss()
 
     # Generate random input and target data
