@@ -4,6 +4,8 @@ import csv
 import torch.nn as nn
 from tqdm import tqdm
 from torchvision.models import resnext50_32x4d
+from DZSpecimenClf import DZSpecimenClf_SamplingGradientTester
+from search_view_indexible import SearchViewIndexible
 from param_flat import flatten_parameters, unflatten_parameters
 
 
@@ -98,25 +100,28 @@ def compare_gradients(
 
 
 if __name__ == "__main__":
+
+    input_slide_path = "/media/hdd2/neo/tmp_slides_dir/H23-5091;S11;MSK5 - 2023-06-12 12.32.44.ndpi"
+    input_data = SearchViewIndexible(input_slide_path, search_view_level=3, search_to_top_downsample_factor=16)
     # Using a ResNeXt-50 model from torchvision
-    model = resnext50_32x4d(num_classes=2)
+    model = DZSpecimenClf_SamplingGradientTester(N=10, patch_size=224, num_classes=2)
     loss_fn = nn.CrossEntropyLoss()
 
     # Generate random input and target data
-    input_data = torch.randn(1, 3, 224, 224)  # Batch size of 1, 3 channels, 224x224 image
+    # input_data = torch.randn(1, 3, 224, 224)  # Batch size of 1, 3 channels, 224x224 image
     target_data = torch.tensor([1])  # Example target class
 
     # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
-    input_data = input_data.to(device)
-    target_data = target_data.to(device)
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # model = model.to(device)
+    # input_data = input_data.to(device) # this is not needed
+    # target_data = target_data.to(device)
 
     print("Computing numerical gradient...")
 
     # Move everything to CPU for numerical gradient calculation
     model.to("cpu")
-    input_data = input_data.to("cpu")
+    # input_data = input_data.to("cpu")
     target_data = target_data.to("cpu")
 
     # Compute numerical gradients for a subset of parameters
@@ -130,3 +135,31 @@ if __name__ == "__main__":
 
     print("Comparing gradients...")
     compare_gradients(numerical_gradients, backward_gradients, param_indices)
+
+    
+    # ############################################################################################
+    # # HERE IS THE SAME SHIT BUT WITH RESNET
+    # ############################################################################################
+
+
+    # # Now do the same thing but with ResNeXt model
+    # print("\nNow testing ResNeXt model...")
+    
+    # # Initialize ResNeXt model
+    # resnet_model = resnext50_32x4d(num_classes=2)
+    # resnet_model.to("cpu")
+
+    # # Generate random input data for ResNeXt
+    # input_data = torch.randn(1, 3, 224, 224)  # Batch size of 1, 3 channels, 224x224 image
+    # target_data = torch.tensor([1])  # Example target class
+
+    # print("Computing numerical gradient for ResNeXt...")
+    # numerical_gradients, param_indices = compute_numerical_gradient(
+    #     resnet_model, input_data, target_data, loss_fn, n_params=N_params
+    # )
+
+    # print("Computing backward gradient for ResNeXt...")
+    # backward_gradients = compute_backward_gradient(resnet_model, input_data, target_data, loss_fn)
+
+    # print("Comparing gradients for ResNeXt...")
+    # compare_gradients(numerical_gradients, backward_gradients, param_indices)
