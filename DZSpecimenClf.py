@@ -420,10 +420,10 @@ class DZSpecimenClf_SamplingGradientTester(nn.Module):
         self.N = N
         self.patch_size = patch_size
 
-    def forward(self, topview_image_tensor, search_view_indexibles):
+    def forward(self, search_view_indexibles):
         # repeat self.xy b times so it has shape (b, N, 2)
         
-        locations = self.xy.unsqueeze(0).repeat(topview_image_tensor.shape[0], 1, 1)
+        locations = self.xy.unsqueeze(0).repeat(len(search_view_indexibles), 1, 1)
         # assert that the output is of the correct shape
         assert (
             locations.shape[1] == self.N and locations.shape[2] == 2
