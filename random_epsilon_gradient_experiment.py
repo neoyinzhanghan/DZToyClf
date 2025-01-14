@@ -125,7 +125,7 @@ if __name__ == "__main__":
     target_data = target_data.to("cpu")
 
     # Compute numerical gradients for a subset of parameters
-    N_params = 100  # Number of randomly selected parameters for numerical gradient calculation
+    N_params = 10  # Number of randomly selected parameters for numerical gradient calculation
     numerical_gradients, param_indices = compute_numerical_gradient(
         model, input_data, target_data, loss_fn, n_params=N_params
     )
